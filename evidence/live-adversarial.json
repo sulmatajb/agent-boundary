@@ -13,5 +13,5 @@
     "container.json",
     "live-container-workflow.json"
   ],
-  "publication_status": "Not published. Human confirmation required."
+  "publication_status_at_capture": "Not published. Human confirmation required."
 }

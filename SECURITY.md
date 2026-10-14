@@ -1,6 +1,6 @@
 # Security policy
 
-Agent Boundary 0.1.0 is a reference release candidate, not a production security
+Agent Boundary 0.1.0 is an alpha reference implementation, not a production security
 product. The trust boundary and known limitations are documented in
 [the protocol](docs/PROTOCOL.md), [findings](docs/FINDINGS.md), and
 [container notes](docs/containers.md). Pre-release databases have no supported
@@ -8,12 +8,11 @@ migration format; provision fresh state.
 
 ## Report an issue
 
-There is currently no published repository or designated private disclosure
-endpoint. Before public release, the maintainer must enable a private reporting
-channel and update this policy. Until then, provide a minimal sanitized
-reproducer directly to the maintainer through the existing private channel in
-which you received this checkout. Do not post credentials or exploitable details
-in a public issue. Do not assume a response-time or remediation SLA.
+GitHub private vulnerability reporting is enabled for this repository. Submit a
+minimal sanitized reproducer through
+[Report a vulnerability](https://github.com/sulmatajb/agent-boundary/security/advisories/new).
+Do not post credentials or exploitable details in a public issue. Do not assume
+a response-time or remediation SLA.
 
 A useful report identifies the affected revision, Python and operating-system
 versions, violated invariant, steps against a disposable fixture, expected and

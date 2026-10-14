@@ -4,9 +4,12 @@
 delegated tool authority, durable budget accounting, and retry-safe document
 operations across a three-role agent workflow.
 
-**Proposed public repository:** `sulmatajb/agent-boundary`. No remote repository,
-push, public release, package upload, or external announcement has been made.
-Publication and sharing require the maintainer's explicit confirmation.
+**Public repository:** [sulmatajb/agent-boundary](https://github.com/sulmatajb/agent-boundary).
+The maintainer approved source publication and link sharing on October 14, 2026.
+The reviewed implementation is commit
+[`00ea334`](https://github.com/sulmatajb/agent-boundary/commit/00ea3347bffc6cd5dc0bdc167effe5a856aad618).
+This packet preserves the local validation record; publication documentation is
+updated separately. No package-registry upload or social-account posting is implied.
 
 ## Verified locally
 
@@ -23,7 +26,8 @@ Publication and sharing require the maintainer's explicit confirmation.
 The live model path uses Codex CLI 0.158.0 with the operator's existing ChatGPT
 sign-in. It requires no provider API key and uses the signed-in account's access
 and usage limits. Python 3.11 and Docker were exercised locally. Hosted CI is
-prepared for Python 3.11–3.13 but has not run on a remote repository.
+configured for Python 3.11–3.13; consult
+[GitHub Actions](https://github.com/sulmatajb/agent-boundary/actions) for hosted results.
 
 ## Findings repaired
 
@@ -49,15 +53,15 @@ regression tests now address those cases. See [the findings](FINDINGS.md).
   trusted operator intervention. The adapter-specific deduplication guarantee
   does not automatically extend to arbitrary external tools.
 
-## Proposed publication scope
+## Approved publication scope
 
-After confirmation: create the approved public GitHub repository, push the
-reviewed source, enable a private vulnerability-reporting channel where the
-account supports it, update verified repository/reporting links, and run hosted
-CI. Present the resulting repository link and approved announcement text.
+The approved action is to publish the reviewed source in the named GitHub
+repository, enable private vulnerability reporting, update repository/reporting
+links, run hosted CI, and share the repository link. Private reporting is enabled;
+see [the security policy](../SECURITY.md).
 Publishing to a package registry or posting to a third-party social account is
-outside this proposed action and requires a specified destination.
+outside this action and requires a specified destination.
 
 Original project code uses the MIT license. The vendored Moby syscall profile
 retains Apache-2.0 terms and upstream notices. See [release instructions](RELEASE.md)
-and [the draft announcement](ANNOUNCEMENT.md).
+and [the announcement text](ANNOUNCEMENT.md).

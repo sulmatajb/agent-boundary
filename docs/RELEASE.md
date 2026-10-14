@@ -1,9 +1,10 @@
 # Preparing a release
 
-Version 0.1.0 is a local release candidate. The intended repository name is
-`sulmatajb/agent-boundary`, subject to the maintainer's final approval and remote
-availability. No remote repository exists as part of this preparation. Do not
-represent that candidate name as a live project URL.
+Version 0.1.0 is an alpha reference implementation published at
+[sulmatajb/agent-boundary](https://github.com/sulmatajb/agent-boundary) after the
+maintainer's confirmation on October 14, 2026. Private vulnerability reporting
+is enabled. No package-registry publication is configured. The checklist below
+also applies to future release candidates.
 
 ## Validate the candidate
 
@@ -72,11 +73,12 @@ not require a provider API key. Do not add account credentials to CI.
 
 The prepared CI runs deterministic tests, a focused source check, builds, and a
 clean wheel smoke on Python 3.11–3.13. GitHub Actions are pinned to verified
-upstream commits. Hosted CI has not run while this remains a local repository.
+upstream commits. Hosted results are available in
+[GitHub Actions](https://github.com/sulmatajb/agent-boundary/actions).
 The normal CI workflow contains no release, upload, Docker, or signed-in model
 step. A separate manually dispatched Docker workflow runs disposable deterministic
 container checks on a hosted runner. It also needs no model authentication and
-has not yet run in hosted CI.
+records its results separately from the normal test matrix.
 
 The attempted live adversarial campaign was blocked by automatic safety review:
 zero attack cases are verified and partial progress is unverified. Preserve that

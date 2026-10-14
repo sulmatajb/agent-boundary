@@ -1,4 +1,4 @@
-# Draft announcement — not published
+# Agent Boundary announcement text
 
 Agent Boundary is a small Python reference implementation for durable, bounded
 tool authority in a three-role agent workflow. A researcher, writer, and
@@ -24,6 +24,11 @@ Project code is MIT licensed, with an Apache-2.0 Moby seccomp profile whose
 provenance and notices are included. Twelve engineering agents contributed to
 construction and review; the runtime has three model roles.
 
-Publication status: local release candidate only. Insert a verified repository
-link, exact released revision, final test results, and private security-reporting
-channel only after the maintainer approves publication and the destination exists.
+Repository: [sulmatajb/agent-boundary](https://github.com/sulmatajb/agent-boundary).
+The reviewed implementation is
+[`00ea334`](https://github.com/sulmatajb/agent-boundary/commit/00ea3347bffc6cd5dc0bdc167effe5a856aad618),
+with 93 locally passing tests. Hosted validation is available in
+[GitHub Actions](https://github.com/sulmatajb/agent-boundary/actions).
+Use [private vulnerability reporting](https://github.com/sulmatajb/agent-boundary/security/advisories/new)
+for security issues. This announcement text is included in the repository;
+it has not been posted to a third-party social account.

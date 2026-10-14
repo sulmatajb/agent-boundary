@@ -138,8 +138,10 @@ do not establish those routes as blocked.
 
 See [contribution instructions](CONTRIBUTING.md), [security policy](SECURITY.md),
 [changes](CHANGELOG.md), and the [release checklist](docs/RELEASE.md).
-Version 0.1.0 is a locally prepared release candidate. No remote repository,
-package publication, or public release is implied by this checkout.
+Version 0.1.0 is an alpha reference implementation published at
+[sulmatajb/agent-boundary](https://github.com/sulmatajb/agent-boundary).
+See [GitHub Actions](https://github.com/sulmatajb/agent-boundary/actions) for hosted
+validation. No package-registry release is implied by this source publication.
 
 Project code is [MIT licensed](LICENSE). The unmodified Moby seccomp profile has
 separate Apache-2.0 terms; see [third-party notices](THIRD_PARTY_NOTICES.md) and

@@ -21,6 +21,11 @@ classifiers = [
 ]
 dependencies = []
 
+[project.urls]
+Repository = "https://github.com/sulmatajb/agent-boundary"
+Issues = "https://github.com/sulmatajb/agent-boundary/issues"
+Security = "https://github.com/sulmatajb/agent-boundary/security/policy"
+
 [project.scripts]
 agent-boundary = "agent_boundary.demo:main"
 

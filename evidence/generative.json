@@ -1,0 +1,153 @@
+{
+  "admitted_actions": 228,
+  "cases": [
+    {
+      "categories": {
+        "audit_pagination": 2,
+        "budget_amplification": 63,
+        "capability_theft": 63,
+        "cooperative_budget_spend": 55,
+        "cooperative_overrun": 20,
+        "deep_authorized_read": 1,
+        "delegation": 14,
+        "depth_amplification": 1,
+        "direct_tool_bypass": 62,
+        "exact_replay": 98,
+        "generated_delegation": 48,
+        "generated_execution": 63,
+        "literal_injection": 19,
+        "malformed_action": 62,
+        "nested_delegation": 31,
+        "principal_forgery": 14,
+        "replay_mutation": 81,
+        "revocation": 10,
+        "revoked_delegation": 4,
+        "revoked_lineage": 58,
+        "root_setup": 3,
+        "scope_amplification": 62,
+        "scope_delegation": 62,
+        "stolen_replay": 104
+      },
+      "denial_codes": {
+        "budget_exceeded": 68,
+        "depth_limit": 1,
+        "forbidden": 181,
+        "invalid_fields": 17,
+        "invalid_input": 32,
+        "invalid_json": 13,
+        "request_conflict": 81,
+        "revoked": 150,
+        "scope_denied": 91,
+        "unauthorized": 62
+      },
+      "denied_effects": 0,
+      "invariants": {
+        "audit_complete_without_payloads": true,
+        "every_ancestor_charged": true,
+        "exact_oracle_match": true,
+        "private_canary_unchanged": true,
+        "quota_bounds": true,
+        "tool_effects_equal_admissions": true
+      },
+      "outcomes": {
+        "admitted": 114,
+        "denied": 696,
+        "replayed": 98,
+        "successful_http": 304
+      },
+      "requests": 1000,
+      "seed": 45223,
+      "sql_reconciliations": 920,
+      "state": {
+        "admitted_actions": 114,
+        "capabilities": 80,
+        "draft_versions": 67,
+        "literal_injection_appends": 67,
+        "maximum_depth": 32,
+        "revoked_capabilities": 10,
+        "shared_root_limit": 112,
+        "shared_root_spent": 112,
+        "successful_replays_after_revocation": 14,
+        "tool_ledger_entries": 114
+      }
+    },
+    {
+      "categories": {
+        "audit_pagination": 2,
+        "budget_amplification": 62,
+        "capability_theft": 63,
+        "cooperative_budget_spend": 61,
+        "cooperative_overrun": 20,
+        "deep_authorized_read": 1,
+        "delegation": 14,
+        "depth_amplification": 1,
+        "direct_tool_bypass": 62,
+        "exact_replay": 100,
+        "generated_delegation": 47,
+        "generated_execution": 62,
+        "literal_injection": 19,
+        "malformed_action": 62,
+        "nested_delegation": 31,
+        "principal_forgery": 15,
+        "replay_mutation": 89,
+        "revocation": 10,
+        "revoked_delegation": 4,
+        "revoked_lineage": 57,
+        "root_setup": 3,
+        "scope_amplification": 63,
+        "scope_delegation": 63,
+        "stolen_replay": 89
+      },
+      "denial_codes": {
+        "budget_exceeded": 59,
+        "depth_limit": 1,
+        "forbidden": 167,
+        "invalid_fields": 14,
+        "invalid_input": 29,
+        "invalid_json": 19,
+        "request_conflict": 89,
+        "revoked": 182,
+        "scope_denied": 72,
+        "unauthorized": 62
+      },
+      "denied_effects": 0,
+      "invariants": {
+        "audit_complete_without_payloads": true,
+        "every_ancestor_charged": true,
+        "exact_oracle_match": true,
+        "private_canary_unchanged": true,
+        "quota_bounds": true,
+        "tool_effects_equal_admissions": true
+      },
+      "outcomes": {
+        "admitted": 114,
+        "denied": 694,
+        "replayed": 100,
+        "successful_http": 306
+      },
+      "requests": 1000,
+      "seed": 49374,
+      "sql_reconciliations": 920,
+      "state": {
+        "admitted_actions": 114,
+        "capabilities": 80,
+        "draft_versions": 42,
+        "literal_injection_appends": 42,
+        "maximum_depth": 32,
+        "revoked_capabilities": 10,
+        "shared_root_limit": 112,
+        "shared_root_spent": 112,
+        "successful_replays_after_revocation": 15,
+        "tool_ledger_entries": 114
+      }
+    }
+  ],
+  "denied_effects": 0,
+  "evaluation_kind": "deterministic_seeded_http_integration",
+  "fixture_scope": "disposable_local_broker_and_tool_subprocesses",
+  "model_evaluation": false,
+  "oracle": "independent_immutable_grant_graph_and_admission_events_plus_read_only_SQL",
+  "provider_api_key_used": false,
+  "schema_version": 1,
+  "total_requests": 2000
+}

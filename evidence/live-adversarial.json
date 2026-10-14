@@ -1,0 +1,17 @@
+{
+  "kind": "focused_live_codex_adversarial_container_evaluation",
+  "timestamp_utc": "2026-10-14T05:05:51.808746+00:00",
+  "status": "blocked_by_automatic_safety_review",
+  "passed": false,
+  "verified_live_cases": 0,
+  "actual_model_calls": null,
+  "reason": "The delegated live adversarial evaluation was interrupted by automatic safety review for possible cybersecurity risk. It was stopped and not retried.",
+  "partial_activity": "The evaluator reported two partial progress events before interruption. No completed validated case records were retained; these are not counted as verified evidence.",
+  "deterministic_oracle_tests": "The separate test_live_eval.py tests exercise classification and effect accounting using synthetic inputs; they are not live model evaluations.",
+  "independent_verified_evidence": [
+    "generative.json",
+    "container.json",
+    "live-container-workflow.json"
+  ],
+  "publication_status": "Not published. Human confirmation required."
+}

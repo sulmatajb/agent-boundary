@@ -1,0 +1,101 @@
+# The host supervisor is trusted. No service is published to the host.
+x-hardened: &hardened
+  image: ${AB_IMAGE:-agent-boundary:local}
+  build: .
+  user: "10001:10001"
+  read_only: true
+  cap_drop: [ALL]
+  security_opt:
+    - no-new-privileges:true
+    - seccomp=./security/moby-seccomp.json
+  pids_limit: 64
+  mem_limit: 128m
+  cpus: 1.0
+  init: true
+  tmpfs:
+    - /tmp:rw,noexec,nosuid,nodev,size=16m,mode=1777
+  stop_grace_period: 5s
+
+services:
+  tool:
+    <<: *hardened
+    command: ["-m", "agent_boundary.tool_service", "--db", "/state/tool.db", "--token-file", "/run/secrets/tool_token", "--host", "0.0.0.0", "--port", "8766"]
+    networks: [tool_private]
+    volumes: ["tool_data:/state"]
+    secrets: [tool_token]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; assert urllib.request.urlopen('http://127.0.0.1:8766/health', timeout=2).status == 200"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  broker:
+    <<: *hardened
+    command: ["-m", "agent_boundary.server", "--db", "/state/broker.db", "--credentials", "/run/secrets/broker_credentials", "--sink-url", "http://tool:8766", "--sink-token-file", "/run/secrets/tool_token", "--host", "0.0.0.0", "--port", "8765"]
+    networks: [researcher_private, writer_private, reviewer_private, tool_private]
+    volumes: ["broker_data:/state"]
+    secrets: [broker_credentials, tool_token]
+    depends_on:
+      tool:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; assert urllib.request.urlopen('http://127.0.0.1:8765/health', timeout=2).status == 200"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  researcher:
+    <<: *hardened
+    networks: [researcher_private]
+    secrets:
+      - source: researcher_token
+        target: worker_token
+    depends_on:
+      broker:
+        condition: service_healthy
+
+  writer:
+    <<: *hardened
+    networks: [writer_private]
+    secrets:
+      - source: writer_token
+        target: worker_token
+    depends_on:
+      broker:
+        condition: service_healthy
+
+  reviewer:
+    <<: *hardened
+    networks: [reviewer_private]
+    secrets:
+      - source: reviewer_token
+        target: worker_token
+    depends_on:
+      broker:
+        condition: service_healthy
+
+networks:
+  researcher_private:
+    internal: true
+  writer_private:
+    internal: true
+  reviewer_private:
+    internal: true
+  tool_private:
+    internal: true
+
+volumes:
+  broker_data:
+  tool_data:
+
+secrets:
+  broker_credentials:
+    file: ${AB_RUNTIME_DIR:?Set AB_RUNTIME_DIR to a private bootstrap directory}/broker-credentials.json
+  tool_token:
+    file: ${AB_RUNTIME_DIR:?Set AB_RUNTIME_DIR to a private bootstrap directory}/tool-token
+  researcher_token:
+    file: ${AB_RUNTIME_DIR:?Set AB_RUNTIME_DIR to a private bootstrap directory}/researcher-token
+  writer_token:
+    file: ${AB_RUNTIME_DIR:?Set AB_RUNTIME_DIR to a private bootstrap directory}/writer-token
+  reviewer_token:
+    file: ${AB_RUNTIME_DIR:?Set AB_RUNTIME_DIR to a private bootstrap directory}/reviewer-token

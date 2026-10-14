@@ -1,0 +1,25 @@
+name: Optional Docker checks
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deterministic-containers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.11"
+      - name: Check Docker and Compose availability
+        run: |
+          docker version
+          docker compose version
+      - name: Exercise disposable isolated workers without model access
+        run: PYTHONPATH=src python scripts/container_check.py --workflow-backend deterministic --output work/container-ci.json

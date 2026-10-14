@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agent-boundary"
+version = "0.1.0"
+description = "Durable delegated authority and idempotent tool dispatch for agent teams"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT AND Apache-2.0"
+license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md", "security/LICENSE.moby", "security/NOTICE.moby"]
+authors = [{name = "Agent Boundary contributors"}]
+keywords = ["agents", "capabilities", "authorization", "idempotency"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Security",
+]
+dependencies = []
+
+[project.scripts]
+agent-boundary = "agent_boundary.demo:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

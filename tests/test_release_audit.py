@@ -42,7 +42,9 @@ def corrupted_reply_after_commit(system, response):
 
 class ReleaseAmbiguityTests(unittest.TestCase):
     def test_malformed_successful_reply_is_ambiguous_after_real_commit(self):
-        for response in (b"{", b'{"status":"completed","status":"pending"}', b'"\xff"'):
+        for response in (b"{", b'{"status":"completed","status":"pending"}', b'"\xff"',
+                         b'{}', b'{"status":"completed"}', b'{"status":"denied"}',
+                         b'{"status":"completed","result":{"resource":"private","version":1}}'):
             with self.subTest(response=response), LocalSystem() as system:
                 capability = system.clients["admin"].root(
                     "writer", [["document.append", "draft"]], 2)["capability"]
@@ -53,7 +55,8 @@ class ReleaseAmbiguityTests(unittest.TestCase):
                 self.assertEqual(state["documents"]["draft"],
                                  {"content": "committed once", "version": 1})
                 self.assertEqual(system.clients["admin"].audit()["capabilities"][capability]["spent"], 1)
-                self.assertEqual(feedback["status"], "pending",
+                self.assertEqual(len(state["operations"]), 1)
+                self.assertEqual(feedback, {"status": "pending", "error": "invalid_response"},
                                  "Malformed successful replies cannot establish denial of a committed intent")
 
 

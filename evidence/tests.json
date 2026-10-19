@@ -1,14 +1,14 @@
 {
   "kind": "deterministic_automated_suite_not_live_model_evaluation",
-  "timestamp_utc": "2026-10-14T05:05:40.314864+00:00",
+  "timestamp_utc": "2026-10-19T02:26:51.009721+00:00",
   "python": "3.11.12",
   "platform": "Darwin",
-  "tests_run": 93,
+  "tests_run": 134,
   "failures": 0,
   "errors": 0,
   "skipped": 0,
-  "duration_seconds": 32.013,
+  "duration_seconds": 34.171,
   "passed": true,
-  "source_sha256": "1a1a825c66d01dbd66a2dbb9f455a7d2f7610d4f9bd7a24b9d0dd500e5ab6528",
+  "source_sha256": "2b5ddc0469a5d53de11d8370799546fbf3586cc096ea3802cf954b7dff9fd338",
   "source_hash_recipe": "Sorted src/**/*.py: UTF-8 relative POSIX path + NUL + file bytes + NUL, SHA-256."
 }

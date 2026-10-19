@@ -21,8 +21,9 @@ python scripts/release_check.py
 Tests must remain runnable with `PYTHONPATH=src` and `unittest`. Deterministic
 checks require no model access. See the [README](README.md) for separately
 labeled live and Docker checks. Run tests relevant to a change, then the full
-suite before proposing a security-sensitive change. The GitHub Actions
-workflow is prepared locally; its hosted execution has not yet occurred.
+suite before proposing a security-sensitive change. See
+[GitHub Actions](https://github.com/sulmatajb/agent-boundary/actions) for hosted
+CI results; local checks do not establish a hosted pass.
 
 Build artifacts using the [release instructions](docs/RELEASE.md). Keep generated
 reports under the ignored `work/` directory until reviewed for evidence inclusion.

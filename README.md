@@ -13,9 +13,11 @@ running example has **three model roles**.
 ## Run it locally
 
 Use Python 3.11 or later on a POSIX host (Linux or macOS) for the local
-demo and test suite. Runtime dependencies are Python's standard library. From this source checkout:
+demo and test suite. Runtime dependencies are Python's standard library. Get the source and install it locally:
 
 ```sh
+git clone https://github.com/sulmatajb/agent-boundary.git
+cd agent-boundary
 python3 -m venv .venv
 . .venv/bin/activate
 python -m pip install .
@@ -26,6 +28,15 @@ The command starts disposable broker and tool-service subprocesses, performs a
 source read, draft append, and draft review over HTTP, then cleans up the local
 fixture. Its JSON report labels this backend as a deterministic fixture, with
 zero model calls. It is useful integration evidence, not a model evaluation.
+
+Each local service has one 15-second readiness deadline after process creation,
+covering receipt and validation of a complete JSON line. Partial or trickled
+stdout does not restart that deadline. The line must fit within 4,096 bytes,
+including its newline, and contain `ready: true` and an integer `port` as emitted
+by the bundled services. EOF before the newline, malformed data and oversized
+lines fail startup. A failed child is stopped and reaped through the existing
+bounded cleanup before the error is returned; cleanup time is separate from the
+readiness deadline. Private service logs remain local to the runtime directory.
 
 For live model proposals, separately install **Codex CLI 0.158.0** on a POSIX
 host and sign in to that CLI with your own ChatGPT account. The adapter rejects
@@ -42,6 +53,57 @@ unconditionally free model. The trusted host CLI handles its own authentication.
 The adapter does not read or copy login files and does not forward API-key
 variables, broker credentials, or tool credentials to model proposals.
 
+## Inspect a shared budget without services
+
+From the source checkout, this smaller example needs only Python's standard library:
+
+```sh
+PYTHONPATH=src python3 examples/shared_budget.py
+PYTHONPATH=src python3 examples/shared_budget.py --json
+```
+
+It delegates two sibling capabilities, each with a limit of two, beneath one
+parent with a shared limit of two. Delegation spends nothing. One admission per
+sibling exhausts the parent; a third distinct request fails even though that
+sibling still has one admission left. After reopening the store, an identical
+retry reuses the first admission without another charge, while a changed-payload
+retry fails with `request_conflict`. The transcript and JSON show each counter.
+
+This is an **admission-only** example using the production `Store` API. It
+authenticates newly generated disposable fixture credentials through
+`Store.authenticate`; it does not test HTTP authentication. Both admitted actions
+remain pending and charged. No document is changed, no service starts, and no
+tool or model is called. The temporary database is removed before output is
+printed. No account credentials are needed or read.
+
+## Walk through a lost acknowledgment and recovery
+
+```sh
+PYTHONPATH=src python3 examples/lost_ack_recovery.py
+PYTHONPATH=src python3 examples/lost_ack_recovery.py --json
+```
+
+This disposable example uses the production `Store` and `ToolStore` APIs. One
+append admission charges both parent and writer. The document adapter commits,
+but the example deliberately withholds broker completion: the document has one
+effect while the broker still has one charged, pending action. Both stores are
+reopened, and the parent is revoked. A new request is denied even though quota
+remains. Retrying the original request reuses its admission and saved tool
+receipt, then completes with one document effect and no extra charge. Changing
+that request's payload fails with `request_conflict`.
+
+Text and JSON show each stage's budgets, pending/completed counts, delivery and
+ledger counts, and a fixed synthetic draft. Generated credentials, action IDs,
+private fixture content and host paths are omitted. Both temporary databases
+are removed before output; there is no caller-supplied database-path option.
+
+Withholding completion **models** a lost acknowledgment; no process is killed
+and no HTTP packet is dropped. Reopening demonstrates local persisted state,
+not the separate process-crash tests. Direct trusted-local calls do not test
+HTTP authentication, concurrent dispatch or model behavior. The one-effect
+replay result belongs to this document adapter; arbitrary external tools do not
+inherit it. Revocation prevents new admission, not completion of admitted work.
+
 ## What is enforced
 
 - Authenticated ownership and a fixed operation/resource catalogue are checked
@@ -52,6 +114,8 @@ variables, broker credentials, or tool credentials to model proposals.
   action, while changed-payload retries fail.
 - An accepted action enters a durable outbox. Unknown outcomes remain charged.
   The document service's separate durable ledger deduplicates deliveries.
+- A malformed successful reply remains an ambiguous outcome. The supervisor
+  emits a controlled pending result and stops without a replacement dispatch.
 - Revocation stops new admission. A previously admitted action can still finish.
 - Append authority returns a version receipt, not the document's prior content.
 

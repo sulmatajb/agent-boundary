@@ -4,7 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 
-from .codex_adapter import CodexBackend, DeterministicBackend, run_workflow
+from .codex_adapter import CodexBackend, DeterministicBackend, run_workflow, validate_workflow_options
 from .errors import BoundaryError
 from .runtime import LocalSystem
 
@@ -18,6 +18,7 @@ def main(argv=None) -> int:
     parser.add_argument("--max-rounds", type=int, default=4, help="Proposal rounds per role (2..10)")
     args = parser.parse_args(argv)
     try:
+        validate_workflow_options(args.max_rounds, args.workflow_timeout)
         backend = CodexBackend(timeout=args.timeout) if args.backend == "codex" else DeterministicBackend()
         with LocalSystem() as system:
             report = run_workflow(system, backend, max_rounds=args.max_rounds,

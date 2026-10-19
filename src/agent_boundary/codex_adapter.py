@@ -19,6 +19,7 @@ import time
 import uuid
 
 from .errors import BoundaryError
+from .tool_service import MAX_DOCUMENT_BYTES
 from .transport import strict_json
 
 
@@ -310,7 +311,40 @@ class BoundToolChannel:
             # A transport/5xx response may follow successful reservation. Stop
             # the workflow rather than retrying with a new logical request ID.
             return {"status": "pending" if error.status >= 500 else "denied", "error": error.code}
-        return {"status": action["status"], "result": action.get("result")}
+        # A successful HTTP status is not proof of a usable document receipt.
+        # A malformed reply can follow a commit: preserve uncertainty, omit the
+        # raw response, and let the workflow stop without a fresh request ID.
+        invalid = {"status": "pending", "error": "invalid_response"}
+        if type(action) is not dict or type(action.get("status")) is not str:
+            return invalid
+        result = action.get("result")
+        if action["status"] == "pending":
+            return {"status": "pending", "result": None} if result is None else invalid
+        if action["status"] != "completed" or type(result) is not dict:
+            return invalid
+        fields = {"resource", "version"}
+        if proposal["operation"] == "document.read":
+            fields.add("content")
+        minimum_version = 1 if proposal["operation"] == "document.append" else 0
+        if (set(result) != fields or result["resource"] != proposal["resource"]
+                or type(result["version"]) is not int or result["version"] < minimum_version):
+            return invalid
+        if "content" in fields:
+            if type(result["content"]) is not str:
+                return invalid
+            try:
+                if len(result["content"].encode("utf-8", errors="strict")) > MAX_DOCUMENT_BYTES:
+                    return invalid
+            except UnicodeEncodeError:
+                return invalid
+        return {"status": "completed", "result": result}
+
+
+def validate_workflow_options(max_rounds: int, workflow_timeout: float) -> float:
+    """Validate workflow limits before services or backends are created."""
+    if type(max_rounds) is not int or not 2 <= max_rounds <= 10:
+        raise ValueError("max_rounds must be an integer from 2 through 10")
+    return _positive_timeout(workflow_timeout)
 
 
 def run_workflow(system, backend=None, *, max_rounds: int = 4, workflow_timeout: float = 600) -> dict:
@@ -320,9 +354,8 @@ def run_workflow(system, backend=None, *, max_rounds: int = 4, workflow_timeout:
     authority under a shared three-operation root. Rounds include finish and
     rejected proposals, so denial cannot create an unbounded model loop.
     """
-    if type(max_rounds) is not int or not 2 <= max_rounds <= 10:
-        raise ValueError("max_rounds must be an integer from 2 through 10")
-    deadline = time.monotonic() + _positive_timeout(workflow_timeout)
+    workflow_timeout = validate_workflow_options(max_rounds, workflow_timeout)
+    deadline = time.monotonic() + workflow_timeout
     backend = backend or DeterministicBackend()
     admin = system.clients["admin"]
     union = [scope for scopes in ROLE_SCOPES.values() for scope in scopes]

@@ -16,6 +16,7 @@ from agent_boundary.codex_adapter import (
 )
 from agent_boundary.errors import BoundaryError
 from agent_boundary.runtime import LocalSystem
+from agent_boundary.tool_service import MAX_DOCUMENT_BYTES
 
 
 def events(proposal, *, reasoning="PRIVATE REASONING MUST NOT BE RETAINED"):
@@ -70,14 +71,15 @@ class ProposalValidationTests(unittest.TestCase):
 
     def test_dispatch_uses_only_prebound_authority_and_generated_request_id(self):
         client = Mock()
-        client.execute.return_value = {"status": "completed", "result": {"content": "text"}}
+        client.execute.return_value = {"status": "completed", "result": {
+            "resource": "source", "version": 0, "content": "text"}}
         channel = BoundToolChannel(client, "preselected-capability")
         result = channel.execute(tool_proposal("document.read", "source"))
         args = client.execute.call_args.args
         self.assertEqual(args[0], "preselected-capability")
         self.assertRegex(args[1], r"^workflow-[a-f0-9]{32}$")
         self.assertEqual(args[2:], ("document.read", "source", None))
-        self.assertEqual(result, {"status": "completed", "result": {"content": "text"}})
+        self.assertEqual(result, client.execute.return_value)
         with self.assertRaises(BoundaryError):
             channel.execute(dict(tool_proposal("document.read", "private"), actor="admin"))
         self.assertEqual(client.execute.call_count, 1)
@@ -87,6 +89,56 @@ class ProposalValidationTests(unittest.TestCase):
         client.execute.side_effect = BoundaryError("transport_error", "possibly committed", 502)
         self.assertEqual(BoundToolChannel(client, "cap").execute(tool_proposal("document.read", "source")),
                          {"status": "pending", "error": "transport_error"})
+
+    def test_malformed_success_receipts_are_sanitized_ambiguity(self):
+        read = tool_proposal("document.read", "source")
+        append = tool_proposal("document.append", "draft", "benign fixture")
+        cases = [(proposal, action) for proposal in (read, append) for action in (
+            None, [], {}, {"status": []}, {"status": "denied"}, {"status": "unknown"},
+            {"status": "completed"}, {"status": "completed", "result": None},
+            {"status": "completed", "result": []},
+            {"status": "pending", "result": {"content": "PRIVATE_REPLY"}},
+        )]
+        for version in (True, -1, 0, 1.5, "1"):
+            cases.append((append, {"status": "completed", "result": {
+                "resource": "draft", "version": version}}))
+        cases.extend([
+            (append, {"status": "completed", "result": {"resource": "private", "version": 1}}),
+            (append, {"status": "completed", "result": {"resource": "draft", "version": 1, "content": "PRIVATE_REPLY"}}),
+            (read, {"status": "completed", "result": {"resource": "source", "version": 0}}),
+            (read, {"status": "completed", "result": {"resource": "source", "version": 0, "content": None}}),
+            (read, {"status": "completed", "result": {"resource": "source", "version": 0, "content": "\ud800"}}),
+            (read, {"status": "completed", "result": {"resource": "source", "version": 0,
+                "content": "é" * (MAX_DOCUMENT_BYTES // 2 + 1)}}),
+        ])
+        for index, (proposal, action) in enumerate(cases):
+            with self.subTest(case=index):
+                client = Mock()
+                client.execute.return_value = action
+                feedback = BoundToolChannel(client, "cap").execute(proposal)
+                self.assertEqual(feedback, {"status": "pending", "error": "invalid_response"})
+                self.assertNotIn("PRIVATE_REPLY", json.dumps(feedback))
+                self.assertEqual(client.execute.call_count, 1)
+
+    def test_valid_read_append_pending_and_http_denial_remain_compatible(self):
+        for proposal, response in [
+            (tool_proposal("document.read", "source"), {"status": "completed", "result": {
+                "resource": "source", "version": 0, "content": "literal λ 🛡"}}),
+            (tool_proposal("document.read", "source"), {"status": "completed", "result": {
+                "resource": "source", "version": 0, "content": "é" * (MAX_DOCUMENT_BYTES // 2)}}),
+            (tool_proposal("document.append", "draft", "text"), {"status": "completed", "result": {
+                "resource": "draft", "version": 1}}),
+            (tool_proposal("document.append", "draft", "text"), {"status": "pending", "result": None}),
+        ]:
+            with self.subTest(status=response["status"], operation=proposal["operation"]):
+                client = Mock()
+                client.execute.return_value = dict(response, action_id="recorded-action", replayed=True)
+                self.assertEqual(BoundToolChannel(client, "cap").execute(proposal), response)
+                self.assertEqual(client.execute.call_count, 1)
+        client = Mock()
+        client.execute.side_effect = BoundaryError("scope_denied", "PRIVATE_REPLY", 403)
+        self.assertEqual(BoundToolChannel(client, "cap").execute(tool_proposal("document.read", "source")),
+                         {"status": "denied", "error": "scope_denied"})
 
 
 class CodexCLIAdapterTests(unittest.TestCase):
@@ -157,6 +209,31 @@ class CodexCLIAdapterTests(unittest.TestCase):
 
 
 class WorkflowIntegrationTests(unittest.TestCase):
+    def test_malformed_reply_after_append_stops_without_fresh_dispatch(self):
+        with LocalSystem() as system:
+            original = system.clients["writer"]
+            client = Mock()
+            def commit_then_damage(*args):
+                original.execute(*args)
+                return {"status": "completed", "result": {"content": "PRIVATE_REPLY"}}
+            client.execute.side_effect = commit_then_damage
+            system.clients["writer"] = client
+            report = run_workflow(system)
+            self.assertFalse(report["completed"])
+            self.assertEqual(report["error"], "tool_outcome_pending")
+            self.assertEqual(report["transcript"][-1]["feedback"],
+                             {"status": "pending", "error": "invalid_response"})
+            self.assertEqual(client.execute.call_count, 1)
+            self.assertEqual(report["budget"], {"shared_spent": 2, "role_spent": {
+                "researcher": 1, "writer": 1, "reviewer": 0}})
+            from agent_boundary.tool_service import ToolStore
+            state = ToolStore(system.directory / "tool.db").snapshot()
+            self.assertEqual(state["documents"]["draft"]["version"], 1)
+            self.assertEqual(len(state["operations"]), 2)  # One read, one append.
+            self.assertEqual(len([x for x in state["operations"] if x["operation"] == "document.append"]), 1)
+            self.assertNotIn("PRIVATE_REPLY", json.dumps(report))
+            self.assertEqual(report["runtime"]["model_calls"], 0)
+
     def test_real_three_role_document_workflow(self):
         with LocalSystem() as system:
             report = run_workflow(system)

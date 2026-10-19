@@ -15,9 +15,43 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 
 
 ROLES = ("admin", "researcher", "writer", "reviewer", "attacker")
+STARTUP_TIMEOUT = 15
+READINESS_LIMIT = 4096
+
+
+def _read_readiness(stream):
+    """Read one bounded JSON line under a single, nonrenewable deadline."""
+    deadline = time.monotonic() + STARTUP_TIMEOUT
+    data = bytearray()
+    while True:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError("readiness deadline exceeded")
+        readable, _, _ = select.select([stream], [], [], remaining)
+        if not readable:
+            raise TimeoutError("readiness deadline exceeded")
+        # Read only currently available pipe bytes, never a buffered readline
+        # that can wait indefinitely after select observed one partial byte.
+        chunk = os.read(stream.fileno(), READINESS_LIMIT + 1 - len(data))
+        if not chunk:
+            raise ValueError("EOF before readiness line")
+        data.extend(chunk)
+        newline = data.find(b"\n")
+        if newline >= 0:
+            if newline + 1 > READINESS_LIMIT:
+                raise ValueError("oversized readiness line")
+            result = json.loads(data[:newline + 1])
+            if result.get("ready") is not True or type(result.get("port")) is not int:
+                raise ValueError("invalid readiness")
+            if time.monotonic() >= deadline:
+                raise TimeoutError("readiness deadline exceeded")
+            return result
+        if len(data) >= READINESS_LIMIT:
+            raise ValueError("oversized readiness line")
 
 
 class LocalSystem:
@@ -47,16 +81,15 @@ class LocalSystem:
                                    stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
                                    stderr=log, env=env, cwd=self.directory)
         self.processes[name] = process
-        ready, _, _ = select.select([process.stdout], [], [], 15)
-        if not ready:
-            raise RuntimeError(f"{name} did not become ready within 15 seconds")
-        line = process.stdout.readline(4097)
         try:
-            result = json.loads(line)
-            if result.get("ready") is not True or type(result.get("port")) is not int:
-                raise ValueError("invalid readiness")
-        except (ValueError, TypeError, AttributeError) as error:
-            raise RuntimeError(f"{name} failed startup; inspect its private runtime log") from error
+            result = _read_readiness(process.stdout)
+        except BaseException as error:
+            self.stop(name)
+            if isinstance(error, TimeoutError):
+                raise RuntimeError(f"{name} did not become ready within {STARTUP_TIMEOUT:g} seconds") from error
+            if isinstance(error, (ValueError, TypeError, AttributeError, RecursionError)):
+                raise RuntimeError(f"{name} failed startup; inspect its private runtime log") from error
+            raise
         return f"http://127.0.0.1:{result['port']}"
 
     def __enter__(self):

@@ -107,7 +107,12 @@ def request_json(url: str, token: str, *, method: str = "POST",
             exc.close()
             raise BoundaryError("redirect_forbidden", "Service redirects are forbidden.", 502) from None
         try:
-            raw_error = exc.read(MAX_BODY + 1)
+            try:
+                raw_error = exc.read(MAX_BODY + 1)
+            except (URLError, OSError, TimeoutError, HTTPException) as read_error:
+                # Exceptions raised inside this handler do not reach the sibling
+                # transport handler below. A failed error-body read is ambiguous.
+                raise BoundaryError("transport_error", "Service connection failed; outcome may be pending.", 502) from read_error
             try:
                 error_payload = strict_json(raw_error) if len(raw_error) <= MAX_BODY else {}
             except BoundaryError:

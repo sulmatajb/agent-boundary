@@ -70,6 +70,16 @@ The tool rejects an append that exceeds that limit before changing its state;
 the broker's already-admitted intent remains charged and pending. Recovery
 requires trusted operator intervention when the tool cannot accept that intent.
 
+The supervisor accepts a completed execute reply only with the documented
+receipt for the proposed operation and resource: an integer version (positive
+for appends, nonnegative for reads), and valid Unicode content within the 64 KiB
+UTF-8 document limit for reads. Append receipts must not include content.
+A pending reply has no result. A successful HTTP response with missing or
+malformed status/receipt fields is still ambiguous, even if its JSON parses.
+`BoundToolChannel` returns `pending` with `invalid_response` without including
+the raw reply. The workflow stops without a replacement request or quota refund;
+an HTTP success alone cannot establish either completion or denial.
+
 HTTP audit records omit request values and result bodies. Pages include
 `total_actions` and `next_offset`; use `BrokerClient.audit(offset=next_offset)`
 until the latter is null. Each page is a transactionally consistent snapshot;
@@ -99,6 +109,13 @@ and FULL synchronous mode; correctness assumes functioning local durable storage
 The tuple `(capability, request_id)` binds the entire operation/resource/value
 payload. Identical retries return the same action; different payloads conflict.
 Ownership is checked before replay. A replay does not consume additional budget.
+
+The runnable [shared-budget example](../examples/shared_budget.py) demonstrates
+the sibling ceiling and persisted request binding together, using direct
+production `Store` calls and a disposable database. Run it from the checkout with
+`PYTHONPATH=src python3 examples/shared_budget.py --json`. Its admissions remain
+pending and charged; it performs no tool effects and does not exercise HTTP
+authentication, concurrent scheduling, or crash injection.
 
 The dispatcher contacts the tool only after reservation commits. The tool
 transaction atomically applies a document operation and stores its result under

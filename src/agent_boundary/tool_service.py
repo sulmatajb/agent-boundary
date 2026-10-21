@@ -17,13 +17,13 @@ import sqlite3
 from http.server import ThreadingHTTPServer
 
 from .errors import BoundaryError
+from .receipts import MAX_DOCUMENT_BYTES
 from .transport import StrictHTTPServer, StrictJSONHandler, validate_token
 
 
 _RESOURCES = {"source", "draft", "private"}
 _OPERATIONS = {"document.read", "document.append"}
 _IDENTIFIER = re.compile(r"[A-Za-z0-9_.:-]{1,128}\Z")
-MAX_DOCUMENT_BYTES = 64 * 1024
 _SEED = {"source": "Sample source text.", "draft": "", "private": "CANARY_PRIVATE"}
 
 

@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 from .errors import BoundaryError
+from .receipts import is_document_receipt
 from .store import Store
 from .transport import StrictHTTPServer, StrictJSONHandler, request_json, strict_json, validate_base_url, validate_token
 
@@ -17,13 +18,7 @@ def _deliver(store, action, sink_url, sink_token):
     try:
         result = request_json(sink_url + "/apply", sink_token, payload=payload)
         # This is a trusted adapter, but unexpected replies must never be recorded as success.
-        fields = {"resource", "version"}
-        if action["operation"] == "document.read":
-            fields.add("content")
-        if (set(result) != fields
-                or result["resource"] != action["resource"]
-                or ("content" in fields and type(result["content"]) is not str)
-                or type(result["version"]) is not int or result["version"] < 0):
+        if not is_document_receipt(result, action["operation"], action["resource"]):
             return None
         store.complete(action["action_id"], result)
         return result

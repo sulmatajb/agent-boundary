@@ -19,7 +19,7 @@ import time
 import uuid
 
 from .errors import BoundaryError
-from .tool_service import MAX_DOCUMENT_BYTES
+from .receipts import is_document_receipt
 from .transport import strict_json
 
 
@@ -322,21 +322,8 @@ class BoundToolChannel:
             return {"status": "pending", "result": None} if result is None else invalid
         if action["status"] != "completed" or type(result) is not dict:
             return invalid
-        fields = {"resource", "version"}
-        if proposal["operation"] == "document.read":
-            fields.add("content")
-        minimum_version = 1 if proposal["operation"] == "document.append" else 0
-        if (set(result) != fields or result["resource"] != proposal["resource"]
-                or type(result["version"]) is not int or result["version"] < minimum_version):
+        if not is_document_receipt(result, proposal["operation"], proposal["resource"]):
             return invalid
-        if "content" in fields:
-            if type(result["content"]) is not str:
-                return invalid
-            try:
-                if len(result["content"].encode("utf-8", errors="strict")) > MAX_DOCUMENT_BYTES:
-                    return invalid
-            except UnicodeEncodeError:
-                return invalid
         return {"status": "completed", "result": result}
 
 

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep malformed successful tool receipts durably pending and charged so the
+  same action can recover through the tool ledger without repeating its effect.
+  Broker and supervisor now share the document receipt contract; existing
+  malformed completed records are not migrated.
 - Reject invalid workflow timeout and round limits before constructing a backend
   or starting disposable services, with the same CLI and direct API bounds.
 - Add offline shared-parent budget and lost-acknowledgement examples using the

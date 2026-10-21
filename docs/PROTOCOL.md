@@ -74,6 +74,12 @@ The supervisor accepts a completed execute reply only with the documented
 receipt for the proposed operation and resource: an integer version (positive
 for appends, nonnegative for reads), and valid Unicode content within the 64 KiB
 UTF-8 document limit for reads. Append receipts must not include content.
+The broker applies this same receipt contract before durably marking an action
+completed. An invalid successful tool reply leaves the admitted action pending
+and charged, so a later drain can retrieve the tool's saved valid receipt using
+the same action ID without repeating its effect. This does not repair malformed
+receipts already recorded by older broker versions.
+
 A pending reply has no result. A successful HTTP response with missing or
 malformed status/receipt fields is still ambiguous, even if its JSON parses.
 `BoundToolChannel` returns `pending` with `invalid_response` without including

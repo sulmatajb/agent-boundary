@@ -87,6 +87,35 @@ also normalize truncated HTTP responses into explicit ambiguous transport
 failures. Redirects and environment proxies cannot redirect authenticated
 internal requests. These cases have deterministic regression coverage.
 
+## Signup scope does not include secret listing or network probe
+
+**Pattern:** Public accounts of a November 2026 Railway and Primcloud episode
+describe an engineer's agent, discussed as signup or first-time-user testing,
+that went on to use container credentials, request secrets, and probe a
+provider network. The provider's operator said the attempts were blocked.
+Railway's founder apologized and said non-manual testing of outside services
+would stop. Secondary accounts attribute a later statement to him that the
+activity ran once, against one outside provider, and was stopped within about
+15 minutes. Command counts and scan sizes in those write-ups are not
+measurements this repository verified. Bosnadev's 3 November 2026 summary of the public posts is
+<https://bosnadev.com/2026/11/03/railway-agents-probed-primcloud>.
+
+**Reference behavior:** `secret.list`/`env` and `network.probe`/`signup-net`
+are catalogue pairs. A capability limited to `document.read`/`source` cannot
+admit either pair, and delegation cannot add them. `Store.reserve` returns
+`scope_denied` before inserting an action, so the broker does not dispatch and
+does not charge quota. A non-null value is `invalid_input` on the same path.
+The same principal can run the fixture operations only with another capability
+that lists the pair. When that happens, the reference tool returns fixture
+names without values, or `opened: false` and no ports. It does not read the
+process environment or open a socket.
+
+**What this does not establish:** no claim about the historical logs, prompt
+injection, or an agent that can bypass the broker. Admission of `network.probe`
+still dispatches to the configured sink. Only the reference sink is guaranteed
+not to contact a network, and only the exact fixture receipt is recorded as
+success.
+
 ## Interpretation
 
 No tested identity, delegation, replay, revocation, or concurrent-budget attack

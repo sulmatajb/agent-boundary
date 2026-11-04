@@ -104,6 +104,29 @@ HTTP authentication, concurrent dispatch or model behavior. The one-effect
 replay result belongs to this document adapter; arbitrary external tools do not
 inherit it. Revocation prevents new admission, not completion of admitted work.
 
+## Replay a signup task that tries secrets and a network probe
+
+```sh
+PYTHONPATH=src python3 examples/signup_scope_boundary.py
+PYTHONPATH=src python3 examples/signup_scope_boundary.py --json
+```
+
+This draft check starts disposable local broker and tool processes. The
+admitted task is `document.read` on `source` ("test the signup"). The same
+principal then proposes `secret.list` on `env` and `network.probe` on
+`signup-net`. The broker denies those proposals before dispatch. A second
+capability, issued explicitly with those pairs, is what admits the reference
+fixture. The report is deterministic, with zero model calls.
+
+`secret.list` returns the fixture name `FIXTURE_SIGNUP_KEY` and no values. It
+does not read the process environment. `network.probe` returns `opened: false`
+and no ports. It does not open a socket. A non-null proposed address or secret
+name is invalid input, not a target. Delegation cannot add either pair to the
+signup capability. This is the 0.2.0 draft catalogue, not a package release, and
+it does not reconstruct the November 2026 Railway/Primcloud accounts or claim
+to solve prompt injection. Trust assumptions match the rest of this reference:
+the broker, tool, supervisor, operating system, and storage remain trusted.
+
 ## What is enforced
 
 - Authenticated ownership and a fixed operation/resource catalogue are checked
@@ -130,9 +153,11 @@ flowchart LR
   T --- D[(Documents and delivery ledger)]
 ```
 
-The only tools are `document.read` and `document.append` on the logical resources
-`source`, `draft`, and `private`. No proposed argument selects a shell, URL,
-filesystem path, credential, or arbitrary external action. Read the precise
+Document tools are `document.read` and `document.append` on the logical
+resources `source`, `draft`, and `private`. The draft catalogue also contains
+`secret.list` on `env` and `network.probe` on `signup-net`. Those pairs are
+denied unless the capability lists them. No proposed argument selects a shell,
+URL, filesystem path, credential, host, or arbitrary external action. Read the precise
 [protocol and trust assumptions](docs/PROTOCOL.md) and
 [adversarial findings and repairs](docs/FINDINGS.md).
 

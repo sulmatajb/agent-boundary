@@ -58,10 +58,34 @@ resource, value`, protected by its own dispatcher credential. Its health endpoin
 is public. It has no HTTP audit route.
 
 The fixed catalogue contains `document.read` and `document.append` on `source`,
-`draft`, and `private`. These are exact logical names, not filesystem paths or
-URLs. Reads require a null value. Appends accept a literal Unicode string of at
+`draft`, and `private`, plus two draft pairs: `secret.list` on `env` and
+`network.probe` on `signup-net`. These are exact logical names, not filesystem
+paths, secret names, hosts, or URLs. A pair outside the catalogue is
+`invalid_input`. A catalogue pair is admitted only when every ancestor
+capability lists that same pair; otherwise admission fails with `scope_denied`
+before an action row exists and before the broker contacts the tool. Neither
+denial charges quota.
+
+`document.read`, `secret.list`, and `network.probe` require a null value. A
+proposed address, port, path, or secret name is `invalid_input` and is not a
+target the broker can select. Appends accept a literal Unicode string of at
 most 4,096 characters. The adapter does not interpret commands or instructions
 inside document content.
+
+`env` is not the process environment. The reference `secret.list` receipt is
+`{resource, names, version}` with the fixture name `FIXTURE_SIGNUP_KEY`, version
+0, and no values. `signup-net` is not a network. The reference `network.probe`
+receipt is `{resource, opened, ports}` with `opened` false and `ports` empty;
+the reference tool does not open a socket. The broker completes either action
+only for that exact receipt. Any other reply, including extra names, secret
+values, or open ports, leaves the admitted action pending and charged. A
+different sink contacted after admission does not inherit the reference tool's
+no-contact behavior.
+
+The Codex workflow schema still proposes only document operations. That schema
+is not the authorization check. Clients that submit `secret.list` or
+`network.probe` to `POST /v1/execute` are admitted only under an explicit scope.
+The runnable check is `PYTHONPATH=src python3 examples/signup_scope_boundary.py`.
 
 An append returns only `{resource, version}`. It never returns existing document
 text, because write authority does not imply read authority. A read returns
@@ -154,9 +178,11 @@ This is retry scheduling, not an exclusive lease or guaranteed completion.
 
 An authorized writer can append false or malicious prose to its authorized
 document. A read-authorized role can disclose that content in its public handoff.
-The broker constrains identities, operations, resources, and admission counts;
-it does not prove semantic correctness, confidentiality after an allowed read,
-absence of prompt injection, or safe behavior of arbitrary future tools.
+The broker constrains identities, operations, resources, and admission counts.
+It does not prove semantic correctness, confidentiality after an allowed read,
+absence of prompt injection, or safe behavior of arbitrary future tools. The
+signup-scope pairs do not reconstruct a reported incident, measure an agent's
+success, or contain a caller that can act outside this broker.
 
 The tests exercise concrete implementations and failure windows. They are not
 a proof of all Python executions or a statistical estimate of every future

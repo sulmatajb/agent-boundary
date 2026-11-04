@@ -1,8 +1,9 @@
-"""A real document adapter with atomic, durable delivery deduplication.
+"""Durable tool adapter for the fixed catalogue.
 
-This service is deliberately small: resources are logical names from a fixed
-catalogue, and appends are literal text. It has no path, command, or URL tool.
-Its bearer credential belongs to the broker dispatcher, never to workers.
+Resources are logical names. Document appends are literal text. `secret.list`
+returns fixture names and does not read the process environment.
+`network.probe` records a no-contact receipt and does not open a socket.
+The bearer credential belongs to the broker dispatcher, never to workers.
 """
 
 from __future__ import annotations
@@ -16,13 +17,12 @@ import re
 import sqlite3
 from http.server import ThreadingHTTPServer
 
+from .catalogue import CATALOGUE, FIXTURE_SECRET_NAMES, OPERATIONS, RESOURCES
 from .errors import BoundaryError
 from .receipts import MAX_DOCUMENT_BYTES
 from .transport import StrictHTTPServer, StrictJSONHandler, validate_token
 
 
-_RESOURCES = {"source", "draft", "private"}
-_OPERATIONS = {"document.read", "document.append"}
 _IDENTIFIER = re.compile(r"[A-Za-z0-9_.:-]{1,128}\Z")
 _SEED = {"source": "Sample source text.", "draft": "", "private": "CANARY_PRIVATE"}
 
@@ -30,15 +30,17 @@ _SEED = {"source": "Sample source text.", "draft": "", "private": "CANARY_PRIVAT
 def _validate(action_id: str, operation: str, resource: str, value: str | None) -> None:
     if type(action_id) is not str or _IDENTIFIER.fullmatch(action_id) is None:
         raise BoundaryError("invalid_action", "Invalid action identifier", 400)
-    if type(operation) is not str or operation not in _OPERATIONS:
+    if type(operation) is not str or operation not in OPERATIONS:
         raise BoundaryError("invalid_operation", "Unknown operation", 400)
-    if type(resource) is not str or resource not in _RESOURCES:
+    if type(resource) is not str or resource not in RESOURCES:
         raise BoundaryError("invalid_resource", "Unknown resource", 400)
-    if operation == "document.read":
-        if value is not None:
-            raise BoundaryError("invalid_value", "Read value must be null", 400)
-    elif type(value) is not str or len(value) > 4096:
-        raise BoundaryError("invalid_value", "Append value must be a string of at most 4096 characters", 400)
+    if (operation, resource) not in CATALOGUE:
+        raise BoundaryError("invalid_operation", "Operation does not apply to this resource", 400)
+    if operation == "document.append":
+        if type(value) is not str or len(value) > 4096:
+            raise BoundaryError("invalid_value", "Append value must be a string of at most 4096 characters", 400)
+    elif value is not None:
+        raise BoundaryError("invalid_value", "This operation requires a null value", 400)
     # Surrogate code points are not valid Unicode scalar values and cannot be
     # written to SQLite's UTF-8 text columns. Reject them before admission here.
     if type(value) is str:
@@ -70,11 +72,13 @@ class ToolStore:
                 "resource TEXT PRIMARY KEY, content TEXT NOT NULL, "
                 "version INTEGER NOT NULL CHECK(version >= 0))"
             )
+            # Fixture secret and network actions are not document rows. Document
+            # operations still require a documents row in apply(). Fresh databases
+            # only; 0.1.0 files are not migrated.
             connection.execute(
                 "CREATE TABLE IF NOT EXISTS operations ("
                 "action_id TEXT PRIMARY KEY, operation TEXT NOT NULL, "
-                "resource TEXT NOT NULL REFERENCES documents(resource), "
-                "value TEXT, result TEXT NOT NULL)"
+                "resource TEXT NOT NULL, value TEXT, result TEXT NOT NULL)"
             )
             for resource, content in _SEED.items():
                 connection.execute(
@@ -111,28 +115,35 @@ class ToolStore:
                 result = json.loads(existing["result"])
                 connection.commit()
                 return result
-            row = connection.execute(
-                "SELECT content, version FROM documents WHERE resource = ?", (resource,)
-            ).fetchone()
-            if row is None:
-                raise BoundaryError("unavailable", "Document is unavailable", 503)
-            content, version = row["content"], row["version"]
-            if operation == "document.append":
-                if len(content.encode("utf-8")) + len(value.encode("utf-8")) > MAX_DOCUMENT_BYTES:
-                    raise BoundaryError("document_full", "Document exceeds the 64 KiB UTF-8 limit", 409)
-                content += value
-                version += 1
-                connection.execute(
-                    "UPDATE documents SET content = ?, version = ? WHERE resource = ?",
-                    (content, version, resource),
-                )
-            # Append authority does not imply read authority. Returning prior
-            # content here would turn even an empty append into a forbidden read.
-            result = {"resource": resource, "version": version}
-            if operation == "document.read":
-                if len(content.encode("utf-8")) > MAX_DOCUMENT_BYTES:
-                    raise BoundaryError("document_full", "Document exceeds the 64 KiB UTF-8 limit", 409)
-                result["content"] = content
+            if operation == "secret.list":
+                # Names only. This does not consult os.environ or a secret store.
+                result = {"resource": resource, "names": list(FIXTURE_SECRET_NAMES), "version": 0}
+            elif operation == "network.probe":
+                # No socket is opened. opened=false is the whole fixture effect.
+                result = {"resource": resource, "opened": False, "ports": []}
+            else:
+                row = connection.execute(
+                    "SELECT content, version FROM documents WHERE resource = ?", (resource,)
+                ).fetchone()
+                if row is None:
+                    raise BoundaryError("unavailable", "Document is unavailable", 503)
+                content, version = row["content"], row["version"]
+                if operation == "document.append":
+                    if len(content.encode("utf-8")) + len(value.encode("utf-8")) > MAX_DOCUMENT_BYTES:
+                        raise BoundaryError("document_full", "Document exceeds the 64 KiB UTF-8 limit", 409)
+                    content += value
+                    version += 1
+                    connection.execute(
+                        "UPDATE documents SET content = ?, version = ? WHERE resource = ?",
+                        (content, version, resource),
+                    )
+                # Append authority does not imply read authority. Returning prior
+                # content here would turn even an empty append into a forbidden read.
+                result = {"resource": resource, "version": version}
+                if operation == "document.read":
+                    if len(content.encode("utf-8")) > MAX_DOCUMENT_BYTES:
+                        raise BoundaryError("document_full", "Document exceeds the 64 KiB UTF-8 limit", 409)
+                    result["content"] = content
             connection.execute(
                 "INSERT INTO operations(action_id, operation, resource, value, result) VALUES (?, ?, ?, ?, ?)",
                 (action_id, operation, resource, value, json.dumps(result, ensure_ascii=True, separators=(",", ":"))),

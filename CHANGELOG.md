@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+### 0.2.0-draft
+
+Package version remains 0.1.0. This subsection is not a release tag.
+
+- Add catalogue pairs `secret.list`/`env` and `network.probe`/`signup-net`.
+  Proposals for those pairs are denied before dispatch unless every ancestor
+  capability lists the pair. Non-null values, including a proposed address or
+  secret name, are rejected as invalid input and are not admitted. The
+  reference tool returns the fixture name `FIXTURE_SIGNUP_KEY` with no values,
+  or a no-contact probe receipt, and does not read the process environment or
+  open a socket. Fresh databases only; 0.1.0 files are not migrated.
+- Add `examples/signup_scope_boundary.py`, a deterministic local-HTTP replay of
+  a signup-scoped agent proposing secret enumeration and a network probe.
+
+### Also unreleased since 0.1.0
+
 - Keep malformed successful tool receipts durably pending and charged so the
   same action can recover through the tool ledger without repeating its effect.
   Broker and supervisor now share the document receipt contract; existing

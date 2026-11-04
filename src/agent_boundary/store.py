@@ -14,11 +14,10 @@ import re
 import secrets
 import sqlite3
 
+from .catalogue import CATALOGUE, OPERATIONS, RESOURCES
 from .errors import BoundaryError
 
 
-RESOURCES = frozenset({"source", "draft", "private"})
-OPERATIONS = frozenset({"document.read", "document.append"})
 MAX_CAPABILITIES = 4096
 MAX_DEPTH = 32
 _IDENTIFIER = re.compile(r"[A-Za-z0-9_.:-]{1,128}\Z")
@@ -66,7 +65,7 @@ def _scopes(scopes):
             _fail("invalid_input", "Each scope must be a two-string list.", 400)
         operation, resource = pair
         if (type(operation) is not str or type(resource) is not str
-                or operation not in OPERATIONS or resource not in RESOURCES):
+                or (operation, resource) not in CATALOGUE):
             _fail("invalid_input", "Unknown scope.", 400)
         if (operation, resource) in pairs:
             _fail("invalid_input", "Duplicate scope.", 400)
@@ -79,13 +78,15 @@ def _payload(operation, resource, value):
         _fail("invalid_input", "Unknown operation.", 400)
     if type(resource) is not str or resource not in RESOURCES:
         _fail("invalid_input", "Unknown resource.", 400)
-    if operation == "document.read":
-        if value is not None:
-            _fail("invalid_input", "Reads require a null value.", 400)
-    else:
+    if (operation, resource) not in CATALOGUE:
+        _fail("invalid_input", "Operation does not apply to that resource.", 400)
+    if operation == "document.append":
         _text(value, "value")
         if len(value) > 4096:
             _fail("invalid_input", "Append value exceeds 4096 characters.", 400)
+    elif value is not None:
+        # secret.list and network.probe take no caller-selected name, host, or port.
+        _fail("invalid_input", "This operation requires a null value.", 400)
 
 
 def _json_result(value):

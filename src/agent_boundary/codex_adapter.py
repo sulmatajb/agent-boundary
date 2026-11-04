@@ -19,7 +19,7 @@ import time
 import uuid
 
 from .errors import BoundaryError
-from .receipts import is_document_receipt
+from .receipts import is_action_receipt
 from .transport import strict_json
 
 
@@ -80,6 +80,8 @@ def validate_proposal(proposal: object) -> dict:
             raise BoundaryError("invalid_proposal", "Finish proposals cannot contain tool arguments", 400)
     else:
         operation, resource, value = (proposal[key] for key in ("operation", "resource", "value"))
+        # This workflow schema is narrower than the broker catalogue. It is not
+        # the authorization decision; POST /v1/execute is.
         if type(operation) is not str or operation not in {"document.read", "document.append"}:
             raise BoundaryError("invalid_proposal", "Unknown tool operation", 400)
         if type(resource) is not str or resource not in {"source", "draft", "private"}:
@@ -322,7 +324,7 @@ class BoundToolChannel:
             return {"status": "pending", "result": None} if result is None else invalid
         if action["status"] != "completed" or type(result) is not dict:
             return invalid
-        if not is_document_receipt(result, proposal["operation"], proposal["resource"]):
+        if not is_action_receipt(result, proposal["operation"], proposal["resource"]):
             return invalid
         return {"status": "completed", "result": result}
 
